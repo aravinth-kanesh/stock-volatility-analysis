@@ -229,8 +229,9 @@ class SectorAnalyser:
         logger.info("  • Tech sector shows strong correlations — consider diversification within sector")
         logger.info("✅ Analysis complete!\n")
 
-    def run(self, output_dir: str = ".") -> pd.DataFrame:
+    def run(self, output_dir: str = "output") -> pd.DataFrame:
         """Execute full analysis pipeline."""
+        os.makedirs(output_dir, exist_ok=True)
         self.fetch_data()
         self.calculate_returns()
         summary = self.compute_metrics()
@@ -254,8 +255,8 @@ if __name__ == "__main__":
                         help="Days of historical data to fetch (default: 365)")
     parser.add_argument("--risk-free-rate", type=float, default=0.043,
                         help="Annualised risk-free rate for Sharpe ratio calculation (default: 0.043)")
-    parser.add_argument("--output-dir", type=str, default=".",
-                        help="Directory to save output charts and CSV (default: current directory)")
+    parser.add_argument("--output-dir", type=str, default="output",
+                        help="Directory to save output charts and CSV (default: output/)")
     args = parser.parse_args()
 
     api_key = os.getenv("POLYGON_API_KEY")

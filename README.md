@@ -102,7 +102,7 @@ python3 stock_analysis.py
 |---|---|---|
 | `--period` | `365` | Days of historical data to fetch |
 | `--risk-free-rate` | `0.043` | Annualised risk-free rate for Sharpe calculation |
-| `--output-dir` | `.` | Directory to save charts and CSV |
+| `--output-dir` | `output/` | Directory to save charts and CSV |
 
 **Examples:**
 ```bash

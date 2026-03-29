@@ -143,7 +143,7 @@ class TestCLIDefaults:
         parser = argparse.ArgumentParser()
         parser.add_argument("--period", type=int, default=365)
         parser.add_argument("--risk-free-rate", type=float, default=0.043)
-        parser.add_argument("--output-dir", type=str, default=".")
+        parser.add_argument("--output-dir", type=str, default="output")
         return parser
 
     def test_period_default(self):
@@ -156,7 +156,7 @@ class TestCLIDefaults:
 
     def test_output_dir_default(self):
         args = self._make_parser().parse_args([])
-        assert args.output_dir == "."
+        assert args.output_dir == "output"
 
     def test_custom_period(self):
         args = self._make_parser().parse_args(["--period", "180"])

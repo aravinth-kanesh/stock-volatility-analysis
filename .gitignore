@@ -46,7 +46,8 @@ venv.bak/
 *~
 .DS_Store
 
-# Generated files
+# Generated output
+output/
 *.png
 *.csv
 *.xlsx
