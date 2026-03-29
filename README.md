@@ -145,7 +145,7 @@ stock-volatility-analysis/
 
 From a recent analysis run:
 
-- Technology shows the highest volatility (2.24%) - higher risk/reward for active strategies
-- Finance is the most stable sector (1.74%) - suitable for defensive positioning
-- Tech correlations: MSFT-NVDA (0.628), AAPL-MSFT (0.519), AAPL-NVDA (0.442)
-- On a risk-adjusted basis, Finance (Sharpe 1.00) slightly outperforms Technology (0.72)
+- Technology shows the highest volatility (2.09%) - higher risk/reward for active strategies
+- Consumer is the most stable sector (1.26%) - suitable for defensive positioning
+- Energy generated the highest avg daily return (0.129%) over the period
+- Tech stock correlations are moderate on average (0.49), with NVDA-MSFT the most correlated pair (0.56)
