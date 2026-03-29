@@ -188,6 +188,30 @@ class SectorAnalyser:
         except Exception as e:
             logger.error(f"Error plotting correlation: {e}")
 
+    def plot_rolling_volatility(self, window: int = 30, output_dir: str = ".") -> None:
+        """Plot rolling annualised volatility for each sector as a time-series line chart."""
+        try:
+            fig, ax = plt.subplots(figsize=(12, 6))
+
+            for sector, returns_df in self.returns_data.items():
+                sector_avg = returns_df.mean(axis=1)
+                rolling_vol = sector_avg.rolling(window=window).std() * np.sqrt(252) * 100
+                ax.plot(rolling_vol.index, rolling_vol.values, label=sector, linewidth=1.5)
+
+            ax.set_title(f"{window}-Day Rolling Annualised Volatility by Sector", fontsize=14, fontweight="bold")
+            ax.set_ylabel("Annualised Volatility (%)", fontsize=12)
+            ax.set_xlabel("Date", fontsize=12)
+            ax.legend(loc="upper right")
+            plt.xticks(rotation=45, ha="right")
+            plt.tight_layout()
+
+            output_file = os.path.join(output_dir, "rolling_volatility.png")
+            plt.savefig(output_file, dpi=300)
+            plt.close()
+            logger.info(f"✅ Rolling volatility chart saved as '{output_file}'")
+        except Exception as e:
+            logger.error(f"Error plotting rolling volatility: {e}")
+
     def generate_insights(self, summary: pd.DataFrame) -> None:
         """Generate and log key insights."""
         top_sector = summary["Volatility (%)"].idxmax()
@@ -209,8 +233,14 @@ class SectorAnalyser:
         self.fetch_data()
         self.calculate_returns()
         summary = self.compute_metrics()
+
+        csv_path = os.path.join(output_dir, "sector_metrics.csv")
+        summary.to_csv(csv_path)
+        logger.info(f"✅ Sector metrics saved to '{csv_path}'")
+
         self.plot_volatility(summary, output_dir=output_dir)
         self.plot_correlation_heatmap(output_dir=output_dir)
+        self.plot_rolling_volatility(output_dir=output_dir)
         self.generate_insights(summary)
         return summary
 
