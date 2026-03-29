@@ -149,9 +149,3 @@ From a recent analysis run:
 - Finance is the most stable sector (1.74%) - suitable for defensive positioning
 - Tech correlations: MSFT-NVDA (0.628), AAPL-MSFT (0.519), AAPL-NVDA (0.442)
 - On a risk-adjusted basis, Finance (Sharpe 1.00) slightly outperforms Technology (0.72)
-
----
-
-## Licence
-
-MIT Licence - feel free to use and modify for personal projects.
