@@ -44,6 +44,29 @@ class SectorAnalyser:
         self.price_data = {}
         self.returns_data = {}
 
+    def _fetch_ticker(self, ticker: str, max_retries: int = 3) -> list:
+        """Fetch aggregates for a single ticker, retrying with exponential backoff on failure."""
+        delay = 15
+        for attempt in range(max_retries):
+            try:
+                aggs = list(self.client.list_aggs(
+                    ticker=ticker,
+                    multiplier=1,
+                    timespan="day",
+                    from_=self.start_date.strftime("%Y-%m-%d"),
+                    to=self.end_date.strftime("%Y-%m-%d"),
+                    limit=50000
+                ))
+                time.sleep(12)  # respect free-tier rate limit between requests
+                return aggs
+            except Exception:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Failed to fetch {ticker} (attempt {attempt + 1}), retrying in {delay}s...")
+                    time.sleep(delay)
+                    delay *= 2
+                else:
+                    raise
+
     def fetch_data(self) -> None:
         """Fetch historical price data for all sectors using Polygon.io."""
         try:
@@ -55,24 +78,12 @@ class SectorAnalyser:
                 for ticker in tickers:
                     try:
                         logger.info(f"Fetching {ticker}...")
-                        aggs = []
-
-                        # Fetch data in chunks (Polygon API has limits)
-                        for agg in self.client.list_aggs(
-                                ticker=ticker,
-                                multiplier=1,
-                                timespan="day",
-                                from_=self.start_date.strftime("%Y-%m-%d"),
-                                to=self.end_date.strftime("%Y-%m-%d"),
-                                limit=50000
-                        ):
-                            aggs.append(agg)
+                        aggs = self._fetch_ticker(ticker)
 
                         if not aggs:
-                            logger.warning(f"⚠️  No data retrieved for {ticker}")
+                            logger.warning(f"No data returned for {ticker}")
                             continue
 
-                        # Convert to DataFrame
                         data_list = [{
                             "timestamp": agg.timestamp,
                             "close": agg.close
@@ -84,26 +95,22 @@ class SectorAnalyser:
                         df.sort_index(inplace=True)
 
                         sector_data[ticker] = df["close"]
-                        logger.info(f"✅ {ticker} downloaded: {len(df)} records")
+                        logger.info(f"{ticker}: {len(df)} records")
 
                     except Exception as e:
-                        logger.warning(f"⚠️  Failed to fetch {ticker}: {e}")
+                        logger.warning(f"Failed to fetch {ticker}: {e}")
                         continue
-
-                    finally:
-                        # Free tier allows 5 requests/minute; pause to avoid rate limiting
-                        time.sleep(13)
 
                 if sector_data:
                     self.price_data[sector] = pd.DataFrame(sector_data)
-                    logger.info(f"✅ {sector} sector complete: {len(sector_data)} tickers\n")
+                    logger.info(f"{sector} sector complete: {len(sector_data)} tickers\n")
                 else:
-                    logger.warning(f"⚠️  No data retrieved for {sector} sector")
+                    logger.warning(f"No data retrieved for {sector} sector")
 
             if not self.price_data:
                 raise ValueError("No data retrieved for any sector. Check your API key and internet connection.")
 
-            logger.info(f"✅ Data fetched for {len(self.price_data)} sectors!\n")
+            logger.info(f"Data fetched for {len(self.price_data)} sectors.\n")
 
         except Exception as e:
             logger.error(f"Error fetching data: {e}")
@@ -114,13 +121,13 @@ class SectorAnalyser:
         try:
             for sector, df in self.price_data.items():
                 if df.empty or len(df) < 2:
-                    logger.warning(f"⚠️  Insufficient data for {sector}, skipping")
+                    logger.warning(f"Insufficient data for {sector}, skipping")
                     continue
 
                 returns_df = df.pct_change().dropna()
 
                 if returns_df.empty:
-                    logger.warning(f"⚠️  No returns calculated for {sector}")
+                    logger.warning(f"No returns calculated for {sector}")
                     continue
 
                 self.returns_data[sector] = returns_df
@@ -128,7 +135,7 @@ class SectorAnalyser:
             if not self.returns_data:
                 raise ValueError("No returns data available.")
 
-            logger.info("✅ Returns calculated successfully!\n")
+            logger.info("Returns calculated.\n")
 
         except Exception as e:
             logger.error(f"Error calculating returns: {e}")
@@ -151,7 +158,7 @@ class SectorAnalyser:
             })
 
         summary = pd.DataFrame(metrics).set_index("Sector").sort_values("Volatility (%)", ascending=False)
-        logger.info(f"📊 Sector Summary:\n{summary}\n")
+        logger.info(f"Sector Summary:\n{summary}\n")
         return summary
 
     def plot_volatility(self, summary: pd.DataFrame, output_dir: str = ".") -> None:
@@ -167,7 +174,7 @@ class SectorAnalyser:
             plt.tight_layout()
             plt.savefig(output_file, dpi=300)
             plt.close()
-            logger.info(f"✅ Volatility chart saved as '{output_file}'")
+            logger.info(f"Volatility chart saved to '{output_file}'")
         except Exception as e:
             logger.error(f"Error plotting volatility: {e}")
 
@@ -175,7 +182,7 @@ class SectorAnalyser:
         """Plot correlation heatmap for technology stocks."""
         try:
             if "Technology" not in self.returns_data:
-                logger.warning("⚠️  Technology sector data not available for correlation analysis")
+                logger.warning("Technology sector data not available for correlation analysis")
                 return
 
             output_file = os.path.join(output_dir, "tech_correlation_heatmap.png")
@@ -189,8 +196,8 @@ class SectorAnalyser:
             plt.tight_layout()
             plt.savefig(output_file, dpi=300)
             plt.close()
-            logger.info(f"✅ Correlation heatmap saved as '{output_file}'")
-            logger.info(f"\n💡 Tech Stocks Correlation:\n{corr_matrix}\n")
+            logger.info(f"Correlation heatmap saved to '{output_file}'")
+            logger.info(f"\nTech Stocks Correlation:\n{corr_matrix}\n")
         except Exception as e:
             logger.error(f"Error plotting correlation: {e}")
 
@@ -214,25 +221,38 @@ class SectorAnalyser:
             output_file = os.path.join(output_dir, "rolling_volatility.png")
             plt.savefig(output_file, dpi=300)
             plt.close()
-            logger.info(f"✅ Rolling volatility chart saved as '{output_file}'")
+            logger.info(f"Rolling volatility chart saved to '{output_file}'")
         except Exception as e:
             logger.error(f"Error plotting rolling volatility: {e}")
 
     def generate_insights(self, summary: pd.DataFrame) -> None:
-        """Generate and log key insights."""
+        """Generate and log key insights from the analysis."""
         top_sector = summary["Volatility (%)"].idxmax()
         bottom_sector = summary["Volatility (%)"].idxmin()
         top_return = summary["Avg Daily Return (%)"].idxmax()
 
-        logger.info("🔍 Key Insights:")
+        logger.info("Key insights:")
         logger.info(
-            f"  • {top_sector} shows highest volatility ({summary.loc[top_sector, 'Volatility (%)']:.2f}%) — higher risk/reward for active strategies")
+            f"  {top_sector} shows the highest volatility "
+            f"({summary.loc[top_sector, 'Volatility (%)']:.2f}%) - higher risk/reward for active strategies"
+        )
         logger.info(
-            f"  • {bottom_sector} is most stable ({summary.loc[bottom_sector, 'Volatility (%)']:.2f}%) — suitable for defensive positioning")
+            f"  {bottom_sector} is the most stable sector "
+            f"({summary.loc[bottom_sector, 'Volatility (%)']:.2f}%) - suitable for defensive positioning"
+        )
         logger.info(
-            f"  • {top_return} generated highest avg daily returns ({summary.loc[top_return, 'Avg Daily Return (%)']:.3f}%)")
-        logger.info("  • Tech sector shows strong correlations — consider diversification within sector")
-        logger.info("✅ Analysis complete!\n")
+            f"  {top_return} generated the highest avg daily return "
+            f"({summary.loc[top_return, 'Avg Daily Return (%)']:.3f}%)"
+        )
+
+        if "Technology" in self.returns_data:
+            corr = self.returns_data["Technology"].corr()
+            upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
+            avg_corr = upper.stack().mean()
+            level = "strong" if avg_corr > 0.6 else "moderate" if avg_corr > 0.3 else "low"
+            logger.info(f"  Average pairwise correlation among tech stocks: {avg_corr:.2f} ({level})")
+
+        logger.info("Analysis complete.\n")
 
     def run(self, output_dir: str = "output") -> pd.DataFrame:
         """Execute full analysis pipeline."""
@@ -243,7 +263,7 @@ class SectorAnalyser:
 
         csv_path = os.path.join(output_dir, "sector_metrics.csv")
         summary.to_csv(csv_path)
-        logger.info(f"✅ Sector metrics saved to '{csv_path}'")
+        logger.info(f"Sector metrics saved to '{csv_path}'")
 
         self.plot_volatility(summary, output_dir=output_dir)
         self.plot_correlation_heatmap(output_dir=output_dir)
