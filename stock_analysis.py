@@ -1,6 +1,8 @@
+import argparse
 import logging
 import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,16 +17,18 @@ logger = logging.getLogger(__name__)
 class SectorAnalyser:
     """Analyse stock sector performance, volatility, and correlations using Polygon.io."""
 
-    def __init__(self, api_key: str, period_days: int = 365):
+    def __init__(self, api_key: str, period_days: int = 365, risk_free_rate: float = 0.043):
         """
         Initialise the analyser with Polygon.io API key.
 
         Args:
             api_key: Your Polygon.io API key
             period_days: Number of days of historical data to fetch (default 365 = 1 year)
+            risk_free_rate: Annualised risk-free rate for Sharpe ratio calculation (default 0.043)
         """
         self.client = RESTClient(api_key=api_key)
         self.period_days = period_days
+        self.risk_free_rate = risk_free_rate
         self.end_date = datetime.now()
         self.start_date = self.end_date - timedelta(days=period_days)
 
@@ -131,7 +135,7 @@ class SectorAnalyser:
         for sector, returns_df in self.returns_data.items():
             avg_return = returns_df.mean().mean()
             volatility = returns_df.std().mean()
-            sharpe_ratio = (avg_return * 252) / (volatility * np.sqrt(252)) if volatility > 0 else 0
+            sharpe_ratio = (avg_return * 252 - self.risk_free_rate) / (volatility * np.sqrt(252)) if volatility > 0 else 0
 
             metrics.append({
                 "Sector": sector,
@@ -144,9 +148,10 @@ class SectorAnalyser:
         logger.info(f"📊 Sector Summary:\n{summary}\n")
         return summary
 
-    def plot_volatility(self, summary: pd.DataFrame, output_file: str = "sector_volatility.png") -> None:
+    def plot_volatility(self, summary: pd.DataFrame, output_dir: str = ".") -> None:
         """Plot sector volatility comparison."""
         try:
+            output_file = os.path.join(output_dir, "sector_volatility.png")
             fig, ax = plt.subplots(figsize=(10, 6))
             summary["Volatility (%)"].plot(kind="bar", ax=ax, color="coral", edgecolor="black")
             ax.set_title("Sector Volatility Comparison (1Y)", fontsize=14, fontweight="bold")
@@ -160,13 +165,14 @@ class SectorAnalyser:
         except Exception as e:
             logger.error(f"Error plotting volatility: {e}")
 
-    def plot_correlation_heatmap(self, output_file: str = "tech_correlation_heatmap.png") -> None:
+    def plot_correlation_heatmap(self, output_dir: str = ".") -> None:
         """Plot correlation heatmap for technology stocks."""
         try:
             if "Technology" not in self.returns_data:
                 logger.warning("⚠️  Technology sector data not available for correlation analysis")
                 return
 
+            output_file = os.path.join(output_dir, "tech_correlation_heatmap.png")
             tech_returns = self.returns_data["Technology"]
             corr_matrix = tech_returns.corr()
 
@@ -198,24 +204,32 @@ class SectorAnalyser:
         logger.info(f"  • Tech sector shows strong correlations — consider diversification within sector")
         logger.info("✅ Analysis complete!\n")
 
-    def run(self) -> pd.DataFrame:
+    def run(self, output_dir: str = ".") -> pd.DataFrame:
         """Execute full analysis pipeline."""
         self.fetch_data()
         self.calculate_returns()
         summary = self.compute_metrics()
-        self.plot_volatility(summary)
-        self.plot_correlation_heatmap()
+        self.plot_volatility(summary, output_dir=output_dir)
+        self.plot_correlation_heatmap(output_dir=output_dir)
         self.generate_insights(summary)
         return summary
 
 if __name__ == "__main__":
-    # Get API key from environment variable
-    api_key = os.getenv("POLYGON_API_KEY")
+    load_dotenv()
 
+    parser = argparse.ArgumentParser(description="Stock sector volatility analysis using Polygon.io.")
+    parser.add_argument("--period", type=int, default=365,
+                        help="Days of historical data to fetch (default: 365)")
+    parser.add_argument("--risk-free-rate", type=float, default=0.043,
+                        help="Annualised risk-free rate for Sharpe ratio calculation (default: 0.043)")
+    parser.add_argument("--output-dir", type=str, default=".",
+                        help="Directory to save output charts and CSV (default: current directory)")
+    args = parser.parse_args()
+
+    api_key = os.getenv("POLYGON_API_KEY")
     if not api_key:
-        logger.error("❌ Error: POLYGON_API_KEY environment variable not set!")
-        logger.info("Please set your API key: export POLYGON_API_KEY='your_key_here'")
+        logger.error("POLYGON_API_KEY not set. Create a .env file (see .env.example) or export the variable.")
         exit(1)
 
-    analyser = SectorAnalyser(api_key=api_key, period_days=365)
-    summary = analyser.run()
+    analyser = SectorAnalyser(api_key=api_key, period_days=args.period, risk_free_rate=args.risk_free_rate)
+    analyser.run(output_dir=args.output_dir)

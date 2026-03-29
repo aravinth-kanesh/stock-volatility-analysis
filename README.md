@@ -1,6 +1,6 @@
 # 📈 Stock Market Volatility & Sector Performance Analysis
 
-A production-grade data analysis tool exploring volatility, returnscand inter-sector correlations across major U.S. stock market sectors using real historical data from Yahoo Finance.
+A data analysis tool exploring volatility, returns and inter-sector correlations across major U.S. stock market sectors using real historical data from Polygon.io.
 
 ---
 
@@ -37,7 +37,6 @@ This project demonstrates quantitative reasoning and analytical skills used in q
 
 ## ⚙️ Tech Stack
 
-- **Python 3.11+**
 - **Python 3.11+**
 - **polygon-api-client** — Enterprise-grade stock market data via Polygon.io
 - **pandas** — Data manipulation and time-series analysis
