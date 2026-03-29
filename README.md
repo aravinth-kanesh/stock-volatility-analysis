@@ -1,9 +1,5 @@
 # Stock Market Volatility & Sector Performance Analysis
 
-![CI](https://github.com/aravinth-kanesh/stock-volatility-analysis/actions/workflows/ci.yml/badge.svg)
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![License](https://img.shields.io/badge/licence-MIT-green)
-
 A data analysis tool exploring volatility, returns and inter-sector correlations across major U.S. stock market sectors using real historical data from Polygon.io.
 
 ---
