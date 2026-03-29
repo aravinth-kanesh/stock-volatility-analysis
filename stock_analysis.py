@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -88,6 +89,10 @@ class SectorAnalyser:
                     except Exception as e:
                         logger.warning(f"⚠️  Failed to fetch {ticker}: {e}")
                         continue
+
+                    finally:
+                        # Free tier allows 5 requests/minute; pause to avoid rate limiting
+                        time.sleep(13)
 
                 if sector_data:
                     self.price_data[sector] = pd.DataFrame(sector_data)
