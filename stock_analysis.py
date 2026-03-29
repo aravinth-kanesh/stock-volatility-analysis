@@ -14,6 +14,7 @@ from polygon import RESTClient
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
 class SectorAnalyser:
     """Analyse stock sector performance, volatility, and correlations using Polygon.io."""
 
@@ -225,7 +226,7 @@ class SectorAnalyser:
             f"  • {bottom_sector} is most stable ({summary.loc[bottom_sector, 'Volatility (%)']:.2f}%) — suitable for defensive positioning")
         logger.info(
             f"  • {top_return} generated highest avg daily returns ({summary.loc[top_return, 'Avg Daily Return (%)']:.3f}%)")
-        logger.info(f"  • Tech sector shows strong correlations — consider diversification within sector")
+        logger.info("  • Tech sector shows strong correlations — consider diversification within sector")
         logger.info("✅ Analysis complete!\n")
 
     def run(self, output_dir: str = ".") -> pd.DataFrame:
@@ -243,6 +244,7 @@ class SectorAnalyser:
         self.plot_rolling_volatility(output_dir=output_dir)
         self.generate_insights(summary)
         return summary
+
 
 if __name__ == "__main__":
     load_dotenv()
